@@ -1,4 +1,7 @@
 from EDNAuto import EDNAuto
 
 edn_auto = EDNAuto()
-edn_auto.start()
+try:
+  edn_auto.start()
+except KeyboardInterrupt:
+  print("\n\nExiting...")
