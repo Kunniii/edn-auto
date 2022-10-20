@@ -2,6 +2,8 @@ import json
 from time import sleep
 from art import tprint
 from requests import get
+from os.path import abspath, isfile
+from os import remove
 
 class EDNAuto:
   cookie = ''
@@ -23,11 +25,14 @@ class EDNAuto:
       print("Cookie should not be empty!!")
       cookie = input("Cookies: ")
     self.cookie = cookie
+    cookieFile = abspath('./cookie.txt')
+    with open(cookieFile,'w+',encoding='utf-8') as f:
+      print(self.cookie, file=f)
 
   def getCookie(self):
-    from os.path import abspath, isfile
     cookieFile = abspath('./cookie.txt')
     if not isfile(cookieFile):
+      print('Next time, put your cookie in cookie.txt')
       self.getCookieInput()
     else:
       self.cookie = open(cookieFile, 'r', encoding='utf-8').readlines()[0]
@@ -86,6 +91,8 @@ class EDNAuto:
     if (res.ok):
       return res.text
     else:
+      print("\nCookie may died, pls consider to get a new cookie!\nRemoving cookie.txt")
+      remove(abspath('./cookie.txt'))
       print("Error connecting to server! Exiting...")
       exit(1)
 
