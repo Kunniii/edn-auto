@@ -19,23 +19,15 @@ class EDNAuto:
   listOfCourses = []
   selectedCourse = {}
 
-  def getCookieInput(self):
-    cookie = input("Cookies: ")
-    while (cookie == ''):
-      print("Cookie should not be empty!!")
-      cookie = input("Cookies: ")
-    self.cookie = cookie
-    cookieFile = abspath('./cookie.txt')
-    with open(cookieFile,'w+',encoding='utf-8') as f:
-      print(self.cookie, file=f)
-
   def getCookie(self):
     cookieFile = abspath('./cookie.txt')
     if not isfile(cookieFile):
-      print('Next time, put your cookie in cookie.txt')
-      self.getCookieInput()
+      print('Next time, put your cookie in cookie.txt! Exiting...')
     else:
-      self.cookie = open(cookieFile, 'r', encoding='utf-8').readlines()[0]
+      try:
+        self.cookie = open(cookieFile, 'r', encoding='utf-8').readlines()[0]
+      except:
+        print("cookie.txt is empty! Pls paste your cookie in that file!")
 
   def createURL(self):
     x = [104,116,116,112,115,58,47,47,102,117,46,101,100,117,110,101,120,116,46,118,110,47,101,110,47,104,111,109,101]
@@ -87,6 +79,7 @@ class EDNAuto:
     self.subject = subj
 
   def getPage(self):
+    print(r'Connecting to Server...',end='\r')
     res = get(self.url, headers=self.HTMLHeader)
     if (res.ok):
       return res.text
@@ -112,6 +105,8 @@ class EDNAuto:
       for course in courses["data"]["listCourseOfUser"]:
         self.coursesCodeName[course["externalcode"]] = course["title"]
     else:
+      print("\nCookie may died, pls consider to get a new cookie!\nRemoving cookie.txt")
+      remove(abspath('./cookie.txt'))
       print("Error getting Courses! Exiting...")
       exit(1)
 
