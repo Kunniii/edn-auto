@@ -1,4 +1,6 @@
 import json
+from time import sleep
+from art import tprint
 from requests import get
 
 class EDNAuto:
@@ -7,6 +9,7 @@ class EDNAuto:
   HTMLHeader = {}
   APIHeader = {}
   accessToken = ''
+  username = ''
   url = ''
   apiURL = ''
   apiCourseURL = ''
@@ -86,10 +89,12 @@ class EDNAuto:
       print("Error connecting to server! Exiting...")
       exit(1)
 
-  def getAccessToken(self):
+  def getUserInfo(self):
     page = self.getPage().split('\n')
     self.getPage()
     accessTokenRaw = page[31]
+    emailRaw = page[44]
+    self.username = emailRaw.split('=')[-1].strip().replace(";",'').replace('"',"").split('@')[0]
     self.accessToken = accessTokenRaw.split('=')[-1].strip().replace(";",'').replace('"',"")
 
   def getCourses(self):
@@ -115,16 +120,22 @@ class EDNAuto:
     print('Course not found! Exiting...')
     exit(1)
 
+  def greeting(self):
+    print()
+    tprint(self.username,font="small")
+    sleep(1)
+
   def init(self):
     self.createURL()
     self.getCookie()
     self.getHeaderForHTML()
-    self.getAccessToken()
+    self.getUserInfo()
     self.getHeaderForAPI()
     self.getCourses()
 
   def start(self):
     self.init()
+    self.greeting()
     self.showCourses()
     self.getSubjectInput()
     self.courseLookUp()
