@@ -2,6 +2,7 @@ from EDNAuto import EDNAuto
 
 edn_auto = EDNAuto()
 try:
-  edn_auto.start()
-except KeyboardInterrupt:
+  while True:
+    edn_auto.start()
+except:
   print("\n\nExiting...")
