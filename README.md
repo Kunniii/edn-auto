@@ -1,3 +1,3 @@
 # How to use
 
-Before using this mess, please save your cookie in `cookie.txt` in this project folder.
+Before using this mess, please save your accessToken in `token.txt` in this project folder.
