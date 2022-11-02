@@ -1,10 +1,12 @@
 import json
 from time import sleep
 from art import tprint
-from requests import get
+from requests import get, post
 from os.path import abspath, isfile
 from os import remove
 from prettytable import PrettyTable
+
+
 class EDNAuto:
     cookie = ''
     courseId = ''
@@ -42,8 +44,17 @@ class EDNAuto:
         x = [104, 116, 116, 112, 115, 58, 47, 47, 102, 117, 97, 112, 105, 46, 101, 100, 117, 110, 101, 120, 116, 46, 118, 110, 47, 108, 101, 97, 114, 110, 47, 118, 50, 47,
              99, 108, 97, 115, 115, 101, 115, 47, 103, 101, 116, 45, 99, 111, 117, 114, 115, 101, 45, 99, 117, 114, 114, 101, 110, 116, 45, 111, 102, 45, 117, 115, 101, 114]
         self.apiCourseCurrentUser = ''.join(chr(i) for i in x)
-        x = [104,116,116,112,115,58,47,47,102,117,97,112,105,46,101,100,117,110,101,120,116,46,118,110,47,108,101,97,114,110,47,118,50,47,99,108,97,115,115,101,115,47,103,101,116,45,99,108,97,115,115,45,115,101,115,115,105,111,110,115,45,100,101,116,97,105,108,115]
+        x = [104, 116, 116, 112, 115, 58, 47, 47, 102, 117, 97, 112, 105, 46, 101, 100, 117, 110, 101, 120, 116, 46, 118, 110, 47, 108, 101, 97, 114, 110, 47, 118, 50, 47,
+             99, 108, 97, 115, 115, 101, 115, 47, 103, 101, 116, 45, 99, 108, 97, 115, 115, 45, 115, 101, 115, 115, 105, 111, 110, 115, 45, 100, 101, 116, 97, 105, 108, 115]
         self.apiClassSessionsDetails = ''.join(chr(i) for i in x)
+        x = [104, 116, 116, 112, 115, 58, 47, 47, 102, 117, 97, 112, 105, 46, 101, 100, 117, 110, 101, 120, 116, 46, 118, 110, 47, 108, 101, 97, 114, 110, 47, 118, 50, 47,
+             99, 111, 117, 114, 115, 101, 47, 103, 101, 116, 45, 115, 101, 115, 115, 105, 111, 110, 45, 97, 99, 116, 105, 118, 105, 116, 121, 45, 100, 101, 116, 97, 105, 108]
+        self.apiSessionActivityDetail = ''.join(chr(i) for i in x)
+        x = [104, 116, 116, 112, 115, 58, 47, 47, 102, 117, 97, 112, 105, 46, 101, 100, 117, 110, 101, 120, 116, 46, 118, 110, 47, 108, 101, 97, 114, 110, 47, 118, 50, 47, 99, 108, 97, 115, 115, 101, 115, 47, 112, 114,
+             101, 115, 101, 110, 116, 99, 114, 105, 116, 105, 99, 97, 108, 47, 103, 101, 116, 45, 101, 118, 97, 108, 117, 97, 116, 101, 45, 105, 110, 115, 105, 100, 101, 45, 103, 114, 111, 117, 112, 45, 115, 99, 111, 114, 101]
+        self.apiGetUsersInGroup = ''.join(chr(i) for i in x)
+        x = [104,116,116,112,115,58,47,47,102,117,97,112,105,46,101,100,117,110,101,120,116,46,118,110,47,108,101,97,114,110,47,118,50,47,99,108,97,115,115,101,115,47,112,114,101,115,101,110,116,99,114,105,116,105,99,97,108,47,101,118,97,108,117,97,116,101,45,105,110,115,105,100,101,45,103,114,111,117,112]
+        self.apiEvaluateInsideGroup = ''.join(chr(i) for i in x)
 
     def getHeaderForHTML(self):
         dataPayload = {
@@ -67,7 +78,7 @@ class EDNAuto:
             "accept-language": "en-US,en;q=0.9",
             "authorization": f"Bearer {self.accessToken}",
             "cache-control": "no-cache",
-            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+            'content-type': 'application/json',
             "origin": self.url,
             "pragma": "no-cache",
             "referer": self.url,
@@ -144,7 +155,6 @@ class EDNAuto:
 
     def courseLookUp(self):
         for course in self.listOfCourses:
-            print(f"check {course['externalcode']} -- {self.courseId}")
             if course['externalcode'] == self.courseId:
                 self.selectedCourse = course
                 return
@@ -163,35 +173,81 @@ class EDNAuto:
         table.add_row(["3", "Auto Vote"])
         print(table)
         self.actionCode = input(">>> ")
-        if self.actionCode > 2:
+        if int(self.actionCode) > 2:
             print("Not Implemented! Please comeback later!")
             self.showActions()
 
     def getSessionsDetails(self):
+        classId = self.selectedCourse["classId"]
+        courseId = self.selectedCourse["id"]
         params = {
-            "classId": self.selectedCourse["classId"],
-            "courseId": self.selectedCourse["id"] 
+            "classId": classId,
+            "courseId": courseId
         }
-        self.selectedCourseDetail = json.loads(get(self.apiClassSessionsDetails, params=params, headers=self.APIHeader).text)
+        self.selectedCourseDetail = json.loads(
+            get(self.apiClassSessionsDetails, params=params, headers=self.APIHeader).text)
+        for session in self.selectedCourseDetail["data"]["sessions"]:
+            sessionid = session["sessionId"]
+            for section in session["sections"]:
+                sectionTitle = section["title"]
+                print(f"Section {sectionTitle}")
+                for activity in section["activities"]:
+                    activityId = activity["id"]
+                    activityTitle = activity["title"]
+                    print(f"\tQuestion {activityTitle}")
+                    groupId = self.getGroupId(sessionid, activityId)
+                    users = self.getUsersInGroup(groupId, activityId, classId)
+                    self.grade(groupId, activityId, classId, users)
+            print("\n\n\n")
 
-    def getGroupId(self):
-        ...
-    
-    def getUsersInGroup(self):
-        ...
+    def getGroupId(self, sid, aid):
+        params = {
+            "sessionid": sid,
+            "activityId": aid
+        }
+        res = json.loads(get(self.apiSessionActivityDetail,
+                         params=params, headers=self.APIHeader).text)
+        return res["data"]["groupId"]
 
-    def grade(self):
-        ...
+    def getUsersInGroup(self, gid, aid, cid):
+        params = {
+            "groupid": gid,
+            "activityId": aid,
+            "classId": cid
+        }
+        res = json.loads(get(self.apiGetUsersInGroup, params=params, headers=self.APIHeader).text)
+        return res["data"]
+
+    def grade(self, gid, aid, cid, users):
+        params = {
+            "groupid": str(gid),
+            "activityId": str(aid),
+            "classId": str(cid)
+        }
+        json_data = []
+        for user in users:
+            user_id = user["userId"]
+            json_data.append(
+                {
+                    'userId': user_id,
+                    'hardWorkingPoint': 5,
+                    'goodPoint': 5,
+                    'cooperativePoint': 5,
+                }
+            )
+        res = post(self.apiEvaluateInsideGroup, params=params, headers=self.APIHeader, json=json_data)
 
     def autoGrade(self):
         ...
-
-
 
     def greeting(self):
         print()
         tprint(self.username, font="small")
         sleep(1)
+
+    def action(self):
+        if (self.actionCode == '1'):
+            self.getSessionsDetails()
 
     def init(self):
         self.createURL()
@@ -207,5 +263,5 @@ class EDNAuto:
         self.showCourses()
         self.getSubjectInput()
         self.courseLookUp()
-        self.getSessionsDetails()
         self.showActions()
+        self.action()
