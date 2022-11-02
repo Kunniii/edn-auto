@@ -160,11 +160,11 @@ class EDNAuto:
                 sessionid = session["sessionId"]
                 for section in session["sections"]:
                     sectionTitle = section["title"]
-                    # print(f"Section {sectionTitle}")
+                    print(f"Section {sectionTitle}")
                     for activity in section["activities"]:
                         activityId = activity["id"]
                         activityTitle = activity["title"]
-                        # print(f"\tQuestion {activityTitle}")
+                        print(f"\tQuestion {activityTitle}")
                         groupId = self.getGroupId(sessionid, activityId)
                         if self.users == None:
                             users = self.getUsersInGroup(
@@ -296,6 +296,14 @@ class EDNAuto:
         print(table_inside)
         print("XSS OUTSIDE")
         print(table_outside)
+
+
+    def addComment(self):
+        pass
+
+    def autoAnswer(self):
+        pass
+
 
     def action(self):
         if self.actionCode == '1':
