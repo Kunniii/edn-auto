@@ -4,21 +4,22 @@ from art import tprint
 from requests import get
 from os.path import abspath, isfile
 from os import remove
-
-
+from prettytable import PrettyTable
 class EDNAuto:
     cookie = ''
-    subject = ''
+    courseId = ''
     HTMLHeader = {}
     APIHeader = {}
     accessToken = ''
     username = ''
     url = ''
     apiURL = ''
-    apiCourseURL = ''
-    coursesCodeName = {}
+    apiCourseCurrentUser = ''
+    apiClassSessionsDetails = ''
+    courseData = {}
     listOfCourses = []
     selectedCourse = {}
+    token = ''
 
     def getCookie(self):
         cookieFile = abspath('./cookie.txt')
@@ -40,7 +41,9 @@ class EDNAuto:
         self.apiURL = ''.join(chr(i) for i in x)
         x = [104, 116, 116, 112, 115, 58, 47, 47, 102, 117, 97, 112, 105, 46, 101, 100, 117, 110, 101, 120, 116, 46, 118, 110, 47, 108, 101, 97, 114, 110, 47, 118, 50, 47,
              99, 108, 97, 115, 115, 101, 115, 47, 103, 101, 116, 45, 99, 111, 117, 114, 115, 101, 45, 99, 117, 114, 114, 101, 110, 116, 45, 111, 102, 45, 117, 115, 101, 114]
-        self.apiCourseURL = ''.join(chr(i) for i in x)
+        self.apiCourseCurrentUser = ''.join(chr(i) for i in x)
+        x = [104,116,116,112,115,58,47,47,102,117,97,112,105,46,101,100,117,110,101,120,116,46,118,110,47,108,101,97,114,110,47,118,50,47,99,108,97,115,115,101,115,47,103,101,116,45,99,108,97,115,115,45,115,101,115,115,105,111,110,115,45,100,101,116,97,105,108,115]
+        self.apiClassSessionsDetails = ''.join(chr(i) for i in x)
 
     def getHeaderForHTML(self):
         dataPayload = {
@@ -77,11 +80,11 @@ class EDNAuto:
         self.APIHeader = header
 
     def getSubjectInput(self):
-        subj = input('Subject code (ABC123): ')
+        subj = input('Course Code: ')
         while (subj == ''):
-            print("Subject should not be empty!!")
-            subj = input('Subject code (ABC123): ')
-        self.subject = subj
+            print("Course Code should not be empty!!")
+            subj = input('Course Code: ')
+        self.courseId = subj
 
     def getPage(self):
         print(r'Connecting to Server...', end='\r')
@@ -106,12 +109,15 @@ class EDNAuto:
             '=')[-1].strip().replace(";", '').replace('"', "")
 
     def getCourses(self):
-        res = get(self.apiCourseURL, headers=self.APIHeader)
+        res = get(self.apiCourseCurrentUser, headers=self.APIHeader)
         if (res.ok):
             courses = json.loads(res.text)
             self.listOfCourses = courses["data"]["listCourseOfUser"]
             for course in courses["data"]["listCourseOfUser"]:
-                self.coursesCodeName[course["externalcode"]] = course["title"]
+                self.courseData[course["id"]] = {
+                    "code": course["externalcode"],
+                    "classId": course["classId"]
+                }
         else:
             print(
                 "\nCookie may died, pls consider to get a new cookie!\nRemoving cookie.txt")
@@ -119,13 +125,27 @@ class EDNAuto:
             print("Error getting Courses! Exiting...")
             exit(1)
 
+    def getClassIdByCourseId(self):
+        for id, data in self.courseData:
+            if id == self.courseId:
+                return data
+        print("Error when getting data. Exiting...")
+        exit(1)
+
     def showCourses(self):
-        for externalcode, title in self.coursesCodeName.items():
-            print(f"> {externalcode:5} : {title}")
+        table = PrettyTable()
+        table.field_names = ["ID", "Course Code", "Class ID"]
+        table.align["ID"] = "c"
+        table.align["Course Code"] = "c"
+        table.align["Class ID"] = "l"
+        for id, data in self.courseData.items():
+            table.add_row([id, data["code"], data["classId"]])
+        print(table)
 
     def courseLookUp(self):
         for course in self.listOfCourses:
-            if course['externalcode'] == self.subject:
+            print(f"check {course['externalcode']} -- {self.courseId}")
+            if course['externalcode'] == self.courseId:
                 self.selectedCourse = course
                 return
         print('Course not found! Exiting...')
@@ -133,6 +153,40 @@ class EDNAuto:
 
     def showCourseInfo():
         ...
+
+    def showActions(self):
+        table = PrettyTable()
+        table.field_names = ["ID", "Action"]
+        table.align["Action"] = "l"
+        table.add_row(["1", "Auto Grade"])
+        table.add_row(["2", "Auto Answer"])
+        table.add_row(["3", "Auto Vote"])
+        print(table)
+        self.actionCode = input(">>> ")
+        if self.actionCode > 2:
+            print("Not Implemented! Please comeback later!")
+            self.showActions()
+
+    def getSessionsDetails(self):
+        params = {
+            "classId": self.selectedCourse["classId"],
+            "courseId": self.selectedCourse["id"] 
+        }
+        self.selectedCourseDetail = json.loads(get(self.apiClassSessionsDetails, params=params, headers=self.APIHeader).text)
+
+    def getGroupId(self):
+        ...
+    
+    def getUsersInGroup(self):
+        ...
+
+    def grade(self):
+        ...
+
+    def autoGrade(self):
+        ...
+
+
 
     def greeting(self):
         print()
@@ -153,3 +207,5 @@ class EDNAuto:
         self.showCourses()
         self.getSubjectInput()
         self.courseLookUp()
+        self.getSessionsDetails()
+        self.showActions()
