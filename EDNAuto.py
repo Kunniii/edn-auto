@@ -170,6 +170,7 @@ class EDNAuto:
 
     def getGradeUrl(self):
         try:
+            self.users = None
             for session in self.selectedCourseDetail["data"]["sessions"]:
                 sessionid = session["sessionId"]
                 for section in session["sections"]:
