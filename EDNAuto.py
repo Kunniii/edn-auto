@@ -1,4 +1,5 @@
 import json
+from base64 import b64decode
 from time import sleep, time
 from art import tprint
 from requests import get, post
@@ -8,6 +9,7 @@ from prettytable import PrettyTable
 
 
 class EDNAuto:
+    init = True
     cookie = ''
     courseId = ''
     APIHeader = {}
@@ -36,6 +38,18 @@ class EDNAuto:
                     tokenFile, 'r', encoding='utf-8').readlines()[0]
             except:
                 print("token.txt is empty! Pls paste your cookie in that file!")
+
+    def greeting(self):
+        if not self.init:
+            return
+        info = self.accessToken.split('.')[1]
+        info = b64decode(info+'==')
+        info = json.loads(info)
+        username = info["UserName"]
+        self.username = username[:username.index("@")]
+        print("")
+        tprint(self.username, font='small')
+        sleep(2)
 
     def createURL(self):
         x = [104, 116, 116, 112, 115, 58, 47, 47, 102, 117, 46, 101, 100, 117,
@@ -324,6 +338,7 @@ class EDNAuto:
 
     def start(self):
         self.init()
+        self.greeting()
         self.showCourses()
         self.getSubjectInput()
         self.courseLookUp()
