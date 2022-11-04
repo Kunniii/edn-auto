@@ -4,9 +4,8 @@ from time import sleep, time
 from art import tprint
 from requests import get, post
 from os.path import abspath, isfile
-from os import remove
 from prettytable import PrettyTable
-
+from urllib.parse import urlparse
 
 class EDNAuto:
     init = True
@@ -242,11 +241,13 @@ class EDNAuto:
                     sectionTitle = section["title"]
                     print(sectionTitle)
                     for activity in section["activities"]:
+                        if (activity["startTime"] == "0001-01-01T00:00:00"):
+                            continue
                         activityId = activity["id"]
                         activityTitle = activity["title"]
                         print(f'\t{activityTitle}')
                         groupId = self.getGroupId(sessionid, activityId)
-                        params = f"?Contextid={activityId}&CourseId{self.courseId}&ParentKey={groupId}&isPublic="
+                        params = f"?Contextid={activityId}&CourseId={self.courseId}&ParentKey={groupId}&isPublic="
                         insideUrl = self.apiGetComments+params+"false"
                         outsideUrl = self.apiGetComments+params+"true"
                         self.insideGroupXSSCheckList.append(insideUrl)
@@ -265,13 +266,15 @@ class EDNAuto:
                     sectionTitle = section["title"]
                     print(sectionTitle)
                     for activity in section["activities"]:
+                        if (activity["startTime"] == "0001-01-01T00:00:00"):
+                            continue
                         activityId = activity["id"]
                         activityTitle = activity["title"]
                         print(f'\t{activityTitle}')
                         groupId = self.getGroupId(sessionid, activityId)
-                        params = f"?Contextid={activityId}&CourseId{self.courseId}&ParentKey={groupId}&isPublic="
-                        insideUrl = self.apiGetComments+params+"false"
-                        self.urlAnswerCheck.append(insideUrl)
+                        params = f"?Contextid={activityId}&CourseId={self.courseId}&ParentKey={groupId}&isPublic="
+                        getCommentAPIUrl = self.apiGetComments+params+"false"
+                        self.urlAnswerCheck.append({"sessionId":sessionid, "url": getCommentAPIUrl})
         except KeyboardInterrupt:
             print("\n\nOK! Perform check on current urls\n\n")
             sleep(2)
@@ -334,44 +337,81 @@ class EDNAuto:
         print("XSS OUTSIDE")
         print(table_outside)
 
-
-    def addComment(self):
+    def delComment(self):
         '''
         {
+            "Id": 1914040,
+            "CourseId": 718,
+            "GroupId": 503903,
+            "ContextId": 1416495,
+            "CurrentGroupId": 503903
+        }
+        '''
+
+    def getCommentPayload(self, groupId, activityId, sessionid, content):
+        classId = self.selectedCourse["classId"]
+        courseId = self.selectedCourse["id"]
+        json_payload = {
             "id": 0,
-            "ParentKey": 503903, - groupId
-            "ContextId": 1416495, - activityId
-            "Content": "<p>.</p>",
+            "ParentKey": f"{groupId}",
+            "ContextId": f"{activityId}",
+            "Content": f"{content}",
             "ParentId": 0,
             "ParentIdComment": 0,
             "ClientKey": f"add-{activityId}-{str(time.time()).replace('.','')[:-4]}",
             "CurrentUrl": f"{self.activityURL}sessionid={sessionid}&activityId={activityId}",
-            "CourseId": 718,
-            "ActivityId": 1416495,
-            "ClassId": 5605,
-            "GroupId": 503903,
+            "CourseId": f"{courseId}",
+            "ActivityId": f"{activityId}",
+            "ClassId": f"{classId}",
+            "GroupId": f"{groupId}",
             "Pings": "{}"
         }
-        '''
-        pass
+        return json_payload
 
     def autoAnswer(self):
-        pass
+        try:
+            for session in self.selectedCourseDetail["data"]["sessions"]:
+                sessionid = session["sessionId"]
+                for section in session["sections"]:
+                    sectionTitle = section["title"]
+                    print(f"Section {sectionTitle}")
+                    for activity in section["activities"]:
+                        activityId = activity["id"]
+                        activityTitle = activity["title"]
+                        print(f"\tQuestion {activityTitle}")
+                        groupId = self.getGroupId(sessionid, activityId)
+
+        except KeyboardInterrupt:
+            print("\n\nOK! Grade on current urls\n\n")
+            sleep(2)
+            pass
+
+    def addAnswerUrlFromAPI(self, url, sessionId):
+        urlParts = urlparse(url)
+        params = urlParts.query
+        activityId = params.split("&")[0].split("=")[1]
+        self.unAnswerUrls.append(f"https://fu.edunext.vn/en/session/activity?sessionid={sessionId}&activityId={activityId}")
+
 
     def unAnswerCheck(self):
-        urls = []
+        self.unAnswerUrls = []
         try:
             self.getUrlForAnswerCheck()
+            found = 0
             number_of_url = len(self.urlAnswerCheck)
             while self.urlAnswerCheck:
-                url = self.urlAnswerCheck.pop(0)
+                obj = self.urlAnswerCheck.pop(0)
+                url = obj["url"]
+                sessionId = obj["sessionId"]
                 comments = json.loads(get(url, headers=self.APIHeader).text)["Comments"]
                 print(f"+ Checking {number_of_url-len(self.urlAnswerCheck)}/{number_of_url} --- Found: [ {found} ]", end="\r")
                 if not comments:
                     found += 1
-                    urls.append(url)
+                    self.addAnswerUrlFromAPI(url, sessionId)
             tprint("DONE", font='small')
             input(" >>> Press Enter to Show URLs <<")
+            for url in self.unAnswerUrls:
+                print(url)
         except Exception as e:
             print("Error happen :) Sorry")
             print(e)
