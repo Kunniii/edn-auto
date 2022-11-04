@@ -84,7 +84,7 @@ class EDNAuto:
         header = {
             "accept": "*/*",
             "accept-encoding": "gzip, deflate, br",
-            "authorization": self.accessToken,
+            "authorization": "Bearer "+self.accessToken,
             "cache-control": "no-cache",
             'content-type': 'application/json',
             "origin": self.url,
@@ -314,6 +314,23 @@ class EDNAuto:
 
 
     def addComment(self):
+        '''
+        {
+            "id": 0,
+            "ParentKey": 503903, - groupId
+            "ContextId": 1416495, - activityId
+            "Content": "<p>.</p>",
+            "ParentId": 0,
+            "ParentIdComment": 0,
+            "ClientKey": f"add-{activityId}-{str(time.time()).replace('.','')[:-4]}",
+            "CurrentUrl": f"{self.activityURL}sessionid={sessionid}&activityId={activityId}",
+            "CourseId": 718,
+            "ActivityId": 1416495,
+            "ClassId": 5605,
+            "GroupId": 503903,
+            "Pings": "{}"
+        }
+        '''
         pass
 
     def autoAnswer(self):
