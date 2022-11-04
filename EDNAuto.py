@@ -84,7 +84,7 @@ class EDNAuto:
         header = {
             "accept": "*/*",
             "accept-encoding": "gzip, deflate, br",
-            "authorization": "Bearer "+self.accessToken,
+            "authorization": str("Bearer "+self.accessToken).replace('\n',''),
             "cache-control": "no-cache",
             'content-type': 'application/json',
             "origin": self.url,
