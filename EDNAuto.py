@@ -150,8 +150,9 @@ class EDNAuto:
         table.align["Action"] = "l"
         table.add_row(["1", "Auto Grade"])
         table.add_row(["2", "XSS Check"])
-        table.add_row(["3", "Auto Answer"])
-        table.add_row(["4", "Auto Vote"])
+        table.add_row(["3", "Un-answered Questions Check"])
+        table.add_row(["4", "Auto Answer"])
+        table.add_row(["5", "Auto Vote"])
         print(table)
         self.actionCode = input(">>> ")
         if int(self.actionCode) > 3:
@@ -255,6 +256,27 @@ class EDNAuto:
             sleep(2)
             pass
 
+    def getUrlForAnswerCheck(self):
+        self.urlAnswerCheck = []
+        try:
+            for session in self.selectedCourseDetail["data"]["sessions"]:
+                sessionid = session["sessionId"]
+                for section in session["sections"]:
+                    sectionTitle = section["title"]
+                    print(sectionTitle)
+                    for activity in section["activities"]:
+                        activityId = activity["id"]
+                        activityTitle = activity["title"]
+                        print(f'\t{activityTitle}')
+                        groupId = self.getGroupId(sessionid, activityId)
+                        params = f"?Contextid={activityId}&CourseId{self.courseId}&ParentKey={groupId}&isPublic="
+                        insideUrl = self.apiGetComments+params+"false"
+                        self.urlAnswerCheck.append(insideUrl)
+        except KeyboardInterrupt:
+            print("\n\nOK! Perform check on current urls\n\n")
+            sleep(2)
+            pass
+
     def isXSSInfected(self, comment):
         if "<script>" in comment:
             return True
@@ -336,6 +358,25 @@ class EDNAuto:
     def autoAnswer(self):
         pass
 
+    def unAnswerCheck(self):
+        urls = []
+        try:
+            self.getUrlForAnswerCheck()
+            number_of_url = len(self.urlAnswerCheck)
+            while self.urlAnswerCheck:
+                url = self.urlAnswerCheck.pop(0)
+                comments = json.loads(get(url, headers=self.APIHeader).text)["Comments"]
+                print(f"+ Checking {number_of_url-len(self.urlAnswerCheck)}/{number_of_url} --- Found: [ {found} ]", end="\r")
+                if not comments:
+                    found += 1
+                    urls.append(url)
+            tprint("DONE", font='small')
+            input(" >>> Press Enter to Show URLs <<")
+        except Exception as e:
+            print("Error happen :) Sorry")
+            print(e)
+            input()
+            pass
 
     def action(self):
         if self.actionCode == '1':
@@ -343,10 +384,11 @@ class EDNAuto:
         elif self.actionCode == '2':
             self.xssCheck()
         elif self.actionCode == '3':
-            pass
+            self.unAnswerCheck()
+        elif self.actionCode == '4':
+            ...
             # self.autoAnswer()
-        print("\n>> Press Enter to Continue <<\n")
-        input()
+        input("\n>> Press Enter to Continue <<\n")
 
     def init(self):
         self.createURL()
