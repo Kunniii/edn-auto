@@ -1,14 +1,14 @@
 import json
 from base64 import b64decode
-from time import sleep, time
 from art import tprint
 from requests import get, post
 from os.path import abspath, isfile
 from prettytable import PrettyTable
-from urllib.parse import urlparse
+from termcolor import colored
+from time import time
 
 class EDNAuto:
-    init = True
+    isInit = True
     cookie = ''
     courseId = ''
     APIHeader = {}
@@ -22,10 +22,10 @@ class EDNAuto:
     listOfCourses = []
     selectedCourse = {}
     token = ''
-    evaluateGradeUrl = []
     users = None
     insideGroupXSSCheckList = []
     outsideGroupXSSCheckList = []
+    courseName = ''
 
     def getAccessToken(self):
         tokenFile = abspath('./token.txt')
@@ -33,14 +33,14 @@ class EDNAuto:
             print('Next time, put your cookie in token.txt! Exiting...')
         else:
             try:
-                self.accessToken = open(
-                    tokenFile, 'r', encoding='utf-8').readlines()[0]
+                self.accessToken = open(tokenFile, 'r', encoding='utf-8').readlines()[0].replace('\n', '')
             except:
                 print("token.txt is empty! Pls paste your cookie in that file!")
 
     def greeting(self):
-        if not self.init:
+        if not self.isInit:
             return
+        self.isInit = False
         info = self.accessToken.split('.')[1]
         info = b64decode(info+'==')
         info = json.loads(info)
@@ -48,7 +48,6 @@ class EDNAuto:
         self.username = username[:username.index("@")]
         print("")
         tprint(self.username, font='small')
-        sleep(2)
 
     def createURL(self):
         x = [104, 116, 116, 112, 115, 58, 47, 47, 102, 117, 46, 101, 100, 117,
@@ -102,6 +101,7 @@ class EDNAuto:
             print("Course Code should not be empty!!")
             subj = input('Course Code: ')
         self.courseId = subj
+        self.courseName = subj
 
     def getCourses(self):
         res = get(self.apiCourseCurrentUser, headers=self.APIHeader)
@@ -165,10 +165,9 @@ class EDNAuto:
             "classId": self.classId,
             "courseId": self.courseId
         }
-        self.selectedCourseDetail = json.loads(
-            get(self.apiClassSessionsDetails, params=params, headers=self.APIHeader).text)
+        self.selectedCourseDetail = json.loads(get(self.apiClassSessionsDetails, params=params, headers=self.APIHeader).text)
 
-    def getGradeUrl(self):
+    def autoGrade(self):
         try:
             self.users = None
             for session in self.selectedCourseDetail["data"]["sessions"]:
@@ -178,18 +177,26 @@ class EDNAuto:
                     print(f"Section {sectionTitle}")
                     for activity in section["activities"]:
                         activityId = activity["id"]
-                        activityTitle = activity["title"]
-                        print(f"\tQuestion {activityTitle}")
+                        activityTitle = activity["description"].replace('<p>','').replace('</p>','')
+                        print(f"\t{activityTitle}", end='\r')
                         groupId = self.getGroupId(sessionid, activityId)
                         if self.users == None:
-                            users = self.getUsersInGroup(
-                                groupId, activityId, self.classId)
+                            users = self.getUsersInGroup(groupId, activityId, self.classId)
                             self.users = users
-                        self.evaluateGradeUrl.append(
-                            self.apiEvaluateInsideGroup+f"?groupid={groupId}&activityId={activityId}&classId={self.classId}")
+                            json_data = []
+                            for user in self.users:
+                                user_id = user["userId"]
+                                json_data.append({'userId': user_id,'hardWorkingPoint': 5,'goodPoint': 5,'cooperativePoint': 5,})
+                        evaluateUrl = f"{self.apiEvaluateInsideGroup}?groupid={groupId}&activityId={activityId}&classId={self.classId}"
+                        res = post(evaluateUrl, headers=self.APIHeader, json=json_data)
+                        if res.ok:
+                            text = colored(f"\t{activityTitle}", "green")
+                            print(text)
+                        else:
+                            text = colored(f"\t{activityTitle}", "red")
+                            print(text)
+                    print()
         except KeyboardInterrupt:
-            print("\n\nOK! Grade on current urls\n\n")
-            sleep(2)
             pass
 
     def getGroupId(self, sid, aid):
@@ -211,27 +218,6 @@ class EDNAuto:
                          params=params, headers=self.APIHeader).text)
         return res["data"]
 
-    def autoGrade(self):
-        self.getGradeUrl()
-        json_data = []
-        for user in self.users:
-            user_id = user["userId"]
-            json_data.append(
-                {
-                    'userId': user_id,
-                    'hardWorkingPoint': 5,
-                    'goodPoint': 5,
-                    'cooperativePoint': 5,
-                }
-            )
-        number_of_url = len(self.evaluateGradeUrl)
-        while (self.evaluateGradeUrl):
-            url = self.evaluateGradeUrl.pop(0)
-            res = post(url, headers=self.APIHeader, json=json_data)
-            if res.ok:
-                print(f'+ Grading {number_of_url-len(self.evaluateGradeUrl)}/{number_of_url}', end="\r")
-        tprint("DONE", font="small")
-
     def getUrlForXSSCheck(self):
         self.insideGroupXSSCheckList = self.outsideGroupXSSCheckList = []
         try:
@@ -252,13 +238,14 @@ class EDNAuto:
                         outsideUrl = self.apiGetComments+params+"true"
                         self.insideGroupXSSCheckList.append(insideUrl)
                         self.outsideGroupXSSCheckList.append(outsideUrl)
+                    print()
         except KeyboardInterrupt:
             print("\n\nOK! Perform check on current urls\n\n")
-            sleep(2)
             pass
 
-    def getUrlForAnswerCheck(self):
-        self.urlAnswerCheck = []
+    def unAnswerCheck(self):
+        self.unAnswerUrls = []
+        self.unAnswerQuestions = []
         try:
             for session in self.selectedCourseDetail["data"]["sessions"]:
                 sessionid = session["sessionId"]
@@ -268,16 +255,47 @@ class EDNAuto:
                     for activity in section["activities"]:
                         if (activity["startTime"] == "0001-01-01T00:00:00"):
                             continue
-                        activityId = activity["id"]
-                        activityTitle = activity["title"]
-                        print(f'\t{activityTitle}')
-                        groupId = self.getGroupId(sessionid, activityId)
-                        params = f"?Contextid={activityId}&CourseId={self.courseId}&ParentKey={groupId}&isPublic="
-                        getCommentAPIUrl = self.apiGetComments+params+"false"
-                        self.urlAnswerCheck.append({"sessionId":sessionid, "url": getCommentAPIUrl})
+                        else:
+                            activityId = activity["id"]
+                            activityTitle = activity["description"].replace('<p>','').replace('</p>','')
+                            print(f'\t{activityTitle}', end='\r')
+                            groupId = self.getGroupId(sessionid, activityId)
+                            params = f"?Contextid={activityId}&CourseId={self.courseId}&ParentKey={groupId}&isPublic="
+                            getCommentAPI = self.apiGetComments+params+"false"
+                            comments = json.loads(get(getCommentAPI, headers=self.APIHeader).text)["Comments"]
+                            if not comments:
+                                text = colored(f"{activityTitle}", "red")
+                                print(f"\t{text}")
+                                self.addAnswerUrlFromAPI(sessionid, activityId)
+                                self.unAnswerQuestions.append({"question":activityTitle, "data": {"gid": groupId, "aid": activityId, "sid": sessionid}})
+                            else:
+                                ok = True
+                                for comment in comments:
+                                    if comment["FullName"] == "Me" and comment["Content"] == '.':
+                                        ok = False
+                                        break
+                                    else:
+                                        ok = True
+                                text = colored(f"{activityTitle}", "green") if ok else colored(f"{activityTitle}", "red")
+                                print(f"\t{text}")
+                    print()
+            try:
+                with (open(abspath(f'./{self.courseName}-{self.courseId}-ANSWER.txt'), 'w+', encoding='utf-8')) as f:
+                    for data in self.unAnswerQuestions:
+                        question = data["question"]
+                        div = "*****************************************************"
+                        sep = "====================================================="
+                        print(div, file=f)
+                        print(question, file=f)
+                        print(sep, file=f)
+                        print("", file=f)
+                input(">> Press Enter to Show Urls | ctrl + C to skip <<")
+                for url in self.unAnswerUrls:
+                    print(url)
+            except Exception as e:
+                print(e)
+                pass
         except KeyboardInterrupt:
-            print("\n\nOK! Perform check on current urls\n\n")
-            sleep(2)
             pass
 
     def isXSSInfected(self, comment):
@@ -348,17 +366,17 @@ class EDNAuto:
         }
         '''
 
-    def getCommentPayload(self, groupId, activityId, sessionid, content):
+    def getAnswerPayload(self, groupId, activityId, sessionid, content):
         classId = self.selectedCourse["classId"]
         courseId = self.selectedCourse["id"]
         json_payload = {
             "id": 0,
             "ParentKey": f"{groupId}",
             "ContextId": f"{activityId}",
-            "Content": f"{content}",
+            "Content": f"<p>{content}</p>",
             "ParentId": 0,
             "ParentIdComment": 0,
-            "ClientKey": f"add-{activityId}-{str(time.time()).replace('.','')[:-4]}",
+            "ClientKey": f"add-{activityId}-{str(time()).replace('.','')[:-4]}",
             "CurrentUrl": f"{self.activityURL}sessionid={sessionid}&activityId={activityId}",
             "CourseId": f"{courseId}",
             "ActivityId": f"{activityId}",
@@ -380,43 +398,16 @@ class EDNAuto:
                         activityTitle = activity["title"]
                         print(f"\tQuestion {activityTitle}")
                         groupId = self.getGroupId(sessionid, activityId)
+                        params = f"?Contextid={activityId}&CourseId={self.courseId}&ParentKey={groupId}&isPublic="
+                        getCommentAPIUrl = self.apiGetComments+params+"false"
+                        
 
         except KeyboardInterrupt:
             print("\n\nOK! Grade on current urls\n\n")
-            sleep(2)
             pass
 
-    def addAnswerUrlFromAPI(self, url, sessionId):
-        urlParts = urlparse(url)
-        params = urlParts.query
-        activityId = params.split("&")[0].split("=")[1]
+    def addAnswerUrlFromAPI(self, sessionId, activityId):
         self.unAnswerUrls.append(f"https://fu.edunext.vn/en/session/activity?sessionid={sessionId}&activityId={activityId}")
-
-
-    def unAnswerCheck(self):
-        self.unAnswerUrls = []
-        try:
-            self.getUrlForAnswerCheck()
-            found = 0
-            number_of_url = len(self.urlAnswerCheck)
-            while self.urlAnswerCheck:
-                obj = self.urlAnswerCheck.pop(0)
-                url = obj["url"]
-                sessionId = obj["sessionId"]
-                comments = json.loads(get(url, headers=self.APIHeader).text)["Comments"]
-                print(f"+ Checking {number_of_url-len(self.urlAnswerCheck)}/{number_of_url} --- Found: [ {found} ]", end="\r")
-                if not comments:
-                    found += 1
-                    self.addAnswerUrlFromAPI(url, sessionId)
-            tprint("DONE", font='small')
-            input(" >>> Press Enter to Show URLs <<")
-            for url in self.unAnswerUrls:
-                print(url)
-        except Exception as e:
-            print("Error happen :) Sorry")
-            print(e)
-            input()
-            pass
 
     def action(self):
         if self.actionCode == '1':
@@ -426,6 +417,8 @@ class EDNAuto:
         elif self.actionCode == '3':
             self.unAnswerCheck()
         elif self.actionCode == '4':
+            self.errorAnswerCheck()
+        elif self.actionCode == '5':
             ...
             # self.autoAnswer()
         input("\n>> Press Enter to Continue <<\n")
