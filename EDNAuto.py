@@ -271,7 +271,8 @@ class EDNAuto:
                             else:
                                 ok = True
                                 for comment in comments:
-                                    if comment["FullName"] == "Me" and comment["Content"] == '.':
+                                    if comment["FullName"] == "Me" and comment["Content"] == '<p>.</p>':
+                                        print("You answered: \".\"")
                                         ok = False
                                         break
                                     else:
