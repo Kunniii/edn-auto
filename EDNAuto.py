@@ -277,6 +277,8 @@ class EDNAuto:
                                         break
                                     else:
                                         ok = True
+                                if not ok:
+                                    self.addAnswerUrlFromAPI(sessionid, activityId)
                                 text = colored(f"{activityTitle}", "green") if ok else colored(f"{activityTitle}", "red")
                                 print(f"\t{text}")
                     print()
