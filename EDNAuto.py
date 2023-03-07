@@ -246,6 +246,7 @@ class EDNAuto:
     def unAnswerCheck(self):
         self.unAnswerUrls = []
         self.unAnswerQuestions = []
+        self.commentToDel = {}
         try:
             for session in self.selectedCourseDetail["data"]["sessions"]:
                 sessionid = session["sessionId"]
@@ -279,10 +280,18 @@ class EDNAuto:
                                         ok = True
                                 if not ok:
                                     self.addAnswerUrlFromAPI(sessionid, activityId)
+                                    self.commentToDel[activityTitle] = {
+                                        'ContextId': activityId,
+                                        'CourseId': self.courseId,
+                                        'CurrentGroupId'
+                                        'GroupId': groupId,
+                                        'Id': comment["Id"]
+                                    };
                                 text = colored(f"{activityTitle}", "green") if ok else colored(f"{activityTitle}", "red")
                                 print(f"\t{text}")
                     print()
             try:
+                self.delComment()
                 with (open(abspath(f'./{self.courseName}-{self.courseId}-ANSWER.txt'), 'w+', encoding='utf-8')) as f:
                     for data in self.unAnswerQuestions:
                         question = data["question"]
@@ -368,6 +377,9 @@ class EDNAuto:
             "CurrentGroupId": 503903
         }
         '''
+        for quest in self.commentToDel:
+            res = post("https://fuapi.edunext.vn/comment/v1/del-comment", headers=self.APIHeader, json=self.commentToDel[quest])
+            print(quest, res.ok)
 
     def getAnswerPayload(self, groupId, activityId, sessionid, content):
         classId = self.selectedCourse["classId"]
