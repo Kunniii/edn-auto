@@ -34,7 +34,7 @@ class EDNAuto:
     class_info = None
     class_slots = []
 
-    def __init__(self, token, stars=5) -> None:
+    def __init__(self, token: str, stars=5) -> None:
         self.stars = stars
         self.token = token
         self.headers["authorization"] = f"Bearer {token}"
