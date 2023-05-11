@@ -1,8 +1,19 @@
 from EDNAuto import EDNAuto
 
-edn_auto = EDNAuto()
 try:
-  while True:
-    edn_auto.start()
+    with open("token", "r", encoding="utf-8") as f:
+        TOKEN = f.read()
 except:
-  print("\n\nExiting...")
+    print(" !!! Please create a file named `token`, then put your token there!")
+    exit(0)
+
+edn_auto = EDNAuto(TOKEN)
+
+try:
+    while True:
+        edn_auto.start()
+except:
+    print("\n\tBYE!")
+    exit(0)
+
+# edn_auto.start()
