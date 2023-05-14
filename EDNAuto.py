@@ -10,23 +10,16 @@ class EDNAuto:
     token = ""
     headers = {
         "content-type": "application/json",
-        "authority": "fugw-edunext.fpt.edu.vn:4433",
         "accept": "application/json, text/plain, */*",
         "accept-language": "en-GB,en;q=0.9,en-US;q=0.8",
         "access-control-allow-headers": "Content-Type",
-        "access-control-allow-methods": "*",
-        "access-control-allow-origin": "*",
         "content-type": "application/json",
         "dnt": "1",
         "origin": "https://fu-edunext.fpt.edu.vn",
         "referer": "https://fu-edunext.fpt.edu.vn/",
-        "sec-ch-ua": '"Microsoft Edge";v="113", "Chromium";v="113", "Not-A.Brand";v="24"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.3",
     }
     user_data = {}
     courses = []
@@ -50,6 +43,7 @@ class EDNAuto:
         response = post(
             "https://fugw-edunext.fpt.edu.vn:8443/api/auth/token", headers=self.headers
         )
+        print(response.json())
         self.user_data = response.json()["data"]
 
     def greeting(self):
@@ -57,7 +51,7 @@ class EDNAuto:
 
     def get_courses(self):
         response = get(
-            f"https://fugw-edunext.fpt.edu.vn:4433/api/v1/class/home/student?id={self.user_data['userId']}&semesterName=DEFAULT",
+            f"https://fugw-edunext.fpt.edu.vn/api/v1/class/home/student?id={self.user_data['userId']}&semesterName=DEFAULT",
             headers=self.headers,
         )
         self.courses = response.json()
@@ -77,7 +71,7 @@ class EDNAuto:
         tprint(self.selected_course["courseCode"][:6])
         sleep(1)
         self.class_info = get(
-            f"https://fugw-edunext.fpt.edu.vn:4433/api/v1/course/course-detail?id={self.selected_course['classId']}&currentPage=1&pageSize=10&statusClickAll=true",
+            f"https://fugw-edunext.fpt.edu.vn/api/v1/course/course-detail?id={self.selected_course['classId']}&currentPage=1&pageSize=10&statusClickAll=true",
             headers=self.headers,
         ).json()["data"]
 
@@ -97,7 +91,7 @@ class EDNAuto:
 
     def get_group(self, classroomSessionId):
         response = post(
-            f"https://fugw-edunext.fpt.edu.vn:4433/api/v1/group/list-group?classroomSessionId={classroomSessionId}",
+            f"https://fugw-edunext.fpt.edu.vn/api/v1/group/list-group?classroomSessionId={classroomSessionId}",
             headers=self.headers,
         ).json()
 
@@ -133,10 +127,8 @@ class EDNAuto:
                             }
                         )
                     json_data = {"gradeTeammatesList": gradeTeammatesList}
-                    with open("gradeList.json", "w+", encoding="utf-8") as f:
-                        f.write(json.dumps(json_data))
                     response = post(
-                        "https://fugw-edunext.fpt.edu.vn:4433/api/v1/grade/grade-teammates",
+                        "https://fugw-edunext.fpt.edu.vn/api/v1/grade/grade-teammates",
                         # "http://localhost:8080/",
                         headers=self.headers,
                         data=json.dumps(json_data),
@@ -149,9 +141,6 @@ class EDNAuto:
                     print("NOT STARTED!")
 
     def vote_group(self):
-        ...
-
-    def start_vote(self):
         ...
 
     def start(self):
